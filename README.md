@@ -1,3 +1,236 @@
 # Sher-color-mixing 
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color Mixing App</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        text-align: center;
+        background: linear-gradient(135deg,#ffd6e8,#d6f0ff);
+        margin:0;
+        padding:20px;
+    }
+    h1 { font-weight:600; }
+    .card {
+        background:white;
+        padding:20px;
+        border-radius:20px;
+        box-shadow:0 10px 25px rgba(0,0,0,0.1);
+        max-width:950px;
+        margin:auto;
+    }
+    .palette, .dropzone {
+        display:flex;
+        justify-content:center;
+        flex-wrap:wrap;
+        gap:15px;
+        margin:20px;
+    }
+    .color {
+        width:60px;
+        height:60px;
+        border-radius:15px;
+        cursor:grab;
+        border:2px solid #fff;
+        box-shadow:0 4px 10px rgba(0,0,0,0.15);
+        transition:transform 0.2s;
+    }
+    .color:hover { transform:scale(1.15); }
+    .slot {
+        width:90px;
+        height:90px;
+        border:3px dashed #bbb;
+        border-radius:15px;
+        background:#fafafa;
+        transition:0.3s;
+    }
+    #resultBox {
+        width:150px;
+        height:150px;
+        margin:20px auto;
+        border-radius:30px;
+        border:4px solid #333;
+        transition:all 0.6s ease;
+    }
+    .animate {
+        animation: pop 0.6s ease;
+    }
+    @keyframes pop {
+        0% { transform:scale(0.8) rotate(-10deg); }
+        50% { transform:scale(1.1) rotate(5deg); }
+        100% { transform:scale(1) rotate(0); }
+    }
+    select, button {
+        padding:8px 15px;
+        font-size:14px;
+        border-radius:10px;
+        border:none;
+        margin:5px;
+        cursor:pointer;
+    }
+    button {
+        background:#ff8fab;
+        color:white;
+        font-weight:600;
+        box-shadow:0 4px 10px rgba(0,0,0,0.15);
+        transition:0.2s;
+    }
+    button:hover { background:#ff5d8f; transform:scale(1.05); }
+</style>
+</head>
+<body>
+
+<div class="card">
+<h1>🎨 Cute Color Mixing App (Pigment Mode)</h1>
+
+<label>Select number of colors: </label>
+<select id="colorCount" onchange="setupSlots()">
+    <option value="2">2 Colors</option>
+    <option value="3">3 Colors</option>
+</select>
+<button onclick="resetAll()">Reset</button>
+
+<div class="palette" id="palette"></div>
+<div class="dropzone" id="dropzone"></div>
+
+<h2>Mixed Result</h2>
+<div id="resultBox"></div>
+<p id="colorName"></p>
+</div>
+
+<script>
+
+// Extended color database (for better name matching)
+const colors = [
+ {name:"Red",value:"#FF0000"},{name:"Green",value:"#00FF00"},{name:"Blue",value:"#0000FF"},
+ {name:"Yellow",value:"#FFFF00"},{name:"Cyan",value:"#00FFFF"},{name:"Magenta",value:"#FF00FF"},
+ {name:"Orange",value:"#FFA500"},{name:"Purple",value:"#800080"},{name:"Pink",value:"#FFC0CB"},
+ {name:"Brown",value:"#8B4513"},{name:"Gray",value:"#808080"},{name:"SkyBlue",value:"#87CEEB"},
+ {name:"Lime",value:"#32CD32"},{name:"Gold",value:"#FFD700"},{name:"Teal",value:"#008080"},
+ {name:"Navy",value:"#000080"},{name:"Coral",value:"#FF7F50"},{name:"Indigo",value:"#4B0082"},
+ {name:"Turquoise",value:"#40E0D0"},{name:"Lavender",value:"#E6E6FA"},{name:"Maroon",value:"#800000"},
+ {name:"Olive",value:"#808000"},{name:"Salmon",value:"#FA8072"},{name:"Khaki",value:"#F0E68C"},
+ {name:"Black",value:"#000000"},{name:"White",value:"#FFFFFF"}
+];
+
+function createPalette(){
+ const palette=document.getElementById("palette");
+ palette.innerHTML="";
+ colors.forEach(c=>{
+   const div=document.createElement("div");
+   div.className="color";
+   div.style.background=c.value;
+   div.draggable=true;
+   div.dataset.color=c.value;
+   div.title=c.name;
+   div.addEventListener("dragstart",e=>{
+     e.dataTransfer.setData("color",c.value);
+   });
+   palette.appendChild(div);
+ });
+}
+
+function setupSlots(){
+ const count=document.getElementById("colorCount").value;
+ const dropzone=document.getElementById("dropzone");
+ dropzone.innerHTML="";
+ for(let i=0;i<count;i++){
+   const slot=document.createElement("div");
+   slot.className="slot";
+   slot.addEventListener("dragover",e=>e.preventDefault());
+   slot.addEventListener("drop",drop);
+   dropzone.appendChild(slot);
+ }
+ document.getElementById("resultBox").style.background="";
+ document.getElementById("colorName").innerText="";
+}
+
+function drop(e){
+ e.preventDefault();
+ const color=e.dataTransfer.getData("color");
+ e.target.style.background=color;
+ mixColors();
+}
+
+// Pigment mixing using CMY subtractive model
+function mixColors(){
+ const slots=document.querySelectorAll(".slot");
+ let cTotal=0,mTotal=0,yTotal=0,count=0;
+
+ slots.forEach(slot=>{
+   if(slot.style.background){
+     const rgb=hexToRgb(slot.style.background);
+     const c=1-(rgb.r/255);
+     const m=1-(rgb.g/255);
+     const y=1-(rgb.b/255);
+     cTotal+=c; mTotal+=m; yTotal+=y;
+     count++;
+   }
+ });
+
+ if(count>0){
+   const cAvg=cTotal/count;
+   const mAvg=mTotal/count;
+   const yAvg=yTotal/count;
+
+   const r=Math.round((1-cAvg)*255);
+   const g=Math.round((1-mAvg)*255);
+   const b=Math.round((1-yAvg)*255);
+
+   const mixed=`rgb(${r},${g},${b})`;
+   const resultBox=document.getElementById("resultBox");
+   resultBox.classList.remove("animate");
+   void resultBox.offsetWidth;
+   resultBox.classList.add("animate");
+   resultBox.style.background=mixed;
+
+   const hex=rgbToHex(r,g,b);
+   const name=closestColor(r,g,b);
+   document.getElementById("colorName").innerHTML=
+     `Closest Color: <b>${name}</b><br>HEX: ${hex}<br>RGB: ${r}, ${g}, ${b}`;
+ }
+}
+
+function hexToRgb(color){
+ const ctx=document.createElement("canvas").getContext("2d");
+ ctx.fillStyle=color;
+ const hex=ctx.fillStyle;
+ const bigint=parseInt(hex.slice(1),16);
+ return {r:(bigint>>16)&255,g:(bigint>>8)&255,b:bigint&255};
+}
+
+function rgbToHex(r,g,b){
+ return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1).toUpperCase();
+}
+
+function closestColor(r,g,b){
+ let min=Infinity;
+ let closest="Custom Mixed Color";
+ colors.forEach(c=>{
+   const rgb=hexToRgb(c.value);
+   const dist=Math.sqrt(
+     (r-rgb.r)**2+
+     (g-rgb.g)**2+
+     (b-rgb.b)**2
+   );
+   if(dist<min){ min=dist; closest=c.name; }
+ });
+ return closest;
+}
+
+function resetAll(){ setupSlots(); }
+
+createPalette();
+setupSlots();
+
+</script>
+
+</body>
+</html>
+
+
         
 
