@@ -1,1 +1,1 @@
-# Sher-color-mixing
+# Sher-color-mixing App
